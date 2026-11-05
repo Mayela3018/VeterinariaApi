@@ -1,6 +1,233 @@
-@VeterinariaApi_HostAddress = http://localhost:5097
+### =====================================================
+### VeterinariaApi - Pruebas de endpoints
+### API publicada en MonsterASP.NET (plan Free, solo HTTP)
+### Para probar en local cambia @host por https://localhost:7078
+### Ejecutar en orden: los PUT y DELETE usan el id creado por el POST
+### =====================================================
+@host = http://veterinariaapi-may.runasp.net
 
-GET {{VeterinariaApi_HostAddress}}/weatherforecast/
+### =================== DUEÑOS ===================
+
+### 1. Listar dueños -> 200
+GET {{host}}/api/Duenos
 Accept: application/json
 
-###
+### 2. Filtro por nombre (query string) -> 200
+GET {{host}}/api/Duenos?nombre=car
+Accept: application/json
+
+### 3. Obtener un dueño -> 200
+GET {{host}}/api/Duenos/1
+Accept: application/json
+
+### 4. Dueño que no existe -> 404
+GET {{host}}/api/Duenos/99
+Accept: application/json
+
+### 5. Ruta anidada: mascotas del dueño -> 200
+GET {{host}}/api/Duenos/1/mascotas
+Accept: application/json
+
+### 6. Ruta anidada con dueño inexistente -> 404
+GET {{host}}/api/Duenos/99/mascotas
+Accept: application/json
+
+### 7. Crear dueño -> 201 (guarda el id creado en "crearDueno")
+# @name crearDueno
+POST {{host}}/api/Duenos
+Content-Type: application/json
+
+{
+  "nombres": "Rosa Mendoza Huaraca",
+  "dni": "76789012",
+  "telefono": "932109876",
+  "email": "rosa.mendoza@gmail.com"
+}
+
+### 8. DNI repetido -> 409 (regla de negocio 1)
+POST {{host}}/api/Duenos
+Content-Type: application/json
+
+{
+  "nombres": "Pedro Gómez Rivas",
+  "dni": "71234567",
+  "telefono": "921098765",
+  "email": "pedro.gomez@gmail.com"
+}
+
+### 9. Datos inválidos (Data Annotations) -> 400
+POST {{host}}/api/Duenos
+Content-Type: application/json
+
+{
+  "nombres": "",
+  "dni": "123",
+  "telefono": "12345",
+  "email": "correo-malo"
+}
+
+### 10. Actualizar el dueño creado -> 204
+PUT {{host}}/api/Duenos/{{crearDueno.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "id": {{crearDueno.response.body.$.id}},
+  "nombres": "Rosa Mendoza Huaraca de Paz",
+  "dni": "76789012",
+  "telefono": "932109999",
+  "email": "rosa.mendoza@outlook.com"
+}
+
+### 11. Id de ruta distinto del cuerpo -> 400
+PUT {{host}}/api/Duenos/{{crearDueno.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "id": 999,
+  "nombres": "Rosa Mendoza Huaraca",
+  "dni": "76789012",
+  "telefono": "932109876",
+  "email": "rosa.mendoza@gmail.com"
+}
+
+### 12. DNI que pertenece a otro dueño -> 409 (regla de negocio 1)
+PUT {{host}}/api/Duenos/{{crearDueno.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "id": {{crearDueno.response.body.$.id}},
+  "nombres": "Rosa Mendoza Huaraca",
+  "dni": "72345678",
+  "telefono": "932109876",
+  "email": "rosa.mendoza@gmail.com"
+}
+
+### 13. Actualizar dueño inexistente -> 404
+PUT {{host}}/api/Duenos/9999
+Content-Type: application/json
+
+{
+  "id": 9999,
+  "nombres": "No Existe",
+  "dni": "79999999",
+  "telefono": "999999999",
+  "email": null
+}
+
+### 14. Eliminar dueño con mascotas -> 409 (regla de negocio 2)
+DELETE {{host}}/api/Duenos/1
+
+### 15. Eliminar el dueño creado -> 204
+DELETE {{host}}/api/Duenos/{{crearDueno.response.body.$.id}}
+
+### 16. Eliminar dueño ya eliminado -> 404
+DELETE {{host}}/api/Duenos/{{crearDueno.response.body.$.id}}
+
+### =================== MASCOTAS ===================
+
+### 17. Listar mascotas con su dueño (Include) -> 200
+GET {{host}}/api/Mascotas
+Accept: application/json
+
+### 18. Filtros combinados por query string -> 200
+GET {{host}}/api/Mascotas?especie=Perro&edadMin=3
+Accept: application/json
+
+### 19. Filtro inválido (edadMin > edadMax) -> 400
+GET {{host}}/api/Mascotas?edadMin=5&edadMax=2
+Accept: application/json
+
+### 20. Obtener una mascota con su dueño -> 200
+GET {{host}}/api/Mascotas/1
+Accept: application/json
+
+### 21. Mascota que no existe -> 404
+GET {{host}}/api/Mascotas/99
+Accept: application/json
+
+### 22. Crear mascota (solo envía la clave foránea) -> 201
+# @name crearMascota
+POST {{host}}/api/Mascotas
+Content-Type: application/json
+
+{
+  "nombre": "Pelusa",
+  "especie": "Gato",
+  "raza": "Angora",
+  "edad": 2,
+  "peso": 3.5,
+  "duenoId": 5
+}
+
+### 23. Clave foránea inexistente (ValidationProblem) -> 400
+POST {{host}}/api/Mascotas
+Content-Type: application/json
+
+{
+  "nombre": "Bobby",
+  "especie": "Perro",
+  "raza": "Beagle",
+  "edad": 3,
+  "peso": 12.4,
+  "duenoId": 99
+}
+
+### 24. Nombre repetido para el mismo dueño -> 409 (regla de negocio 3)
+POST {{host}}/api/Mascotas
+Content-Type: application/json
+
+{
+  "nombre": "Firulais",
+  "especie": "Perro",
+  "raza": "Chihuahua",
+  "edad": 1,
+  "peso": 2.1,
+  "duenoId": 1
+}
+
+### 25. Datos inválidos (Data Annotations) -> 400
+POST {{host}}/api/Mascotas
+Content-Type: application/json
+
+{
+  "nombre": "",
+  "especie": "Perro",
+  "raza": "Mestizo",
+  "edad": 50,
+  "peso": 0,
+  "duenoId": 1
+}
+
+### 26. Actualizar la mascota creada -> 204
+PUT {{host}}/api/Mascotas/{{crearMascota.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "id": {{crearMascota.response.body.$.id}},
+  "nombre": "Pelusa",
+  "especie": "Gato",
+  "raza": "Angora Turco",
+  "edad": 3,
+  "peso": 3.8,
+  "duenoId": 5
+}
+
+### 27. Id de ruta distinto del cuerpo -> 400
+PUT {{host}}/api/Mascotas/{{crearMascota.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "id": 999,
+  "nombre": "Pelusa",
+  "especie": "Gato",
+  "raza": "Angora",
+  "edad": 3,
+  "peso": 3.8,
+  "duenoId": 5
+}
+
+### 28. Eliminar la mascota creada -> 204
+DELETE {{host}}/api/Mascotas/{{crearMascota.response.body.$.id}}
+
+### 29. Eliminar mascota ya eliminada -> 404
+DELETE {{host}}/api/Mascotas/{{crearMascota.response.body.$.id}}
